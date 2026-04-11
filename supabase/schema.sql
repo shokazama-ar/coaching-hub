@@ -72,7 +72,7 @@ create table if not exists public.phases (
 
 -- 5つの大カテゴリ + サブカテゴリ
 -- kind: up / workout / offense / defense / down
-create type if not exists public.practice_category_kind as enum (
+create type public.practice_category_kind as enum (
   'up',
   'workout',
   'offense',
@@ -165,7 +165,7 @@ create table if not exists public.individual_notes (
 );
 
 -- リアクション (既読 / ナイス 等)
-create type if not exists public.reaction_type as enum (
+create type public.reaction_type as enum (
   'read',
   'nice',
   'idea',
@@ -219,12 +219,24 @@ alter table public.individual_notes enable row level security;
 alter table public.reactions enable row level security;
 
 -- teams: チームメンバーのみ
-create policy if not exists teams_select_same_team
+create policy teams_insert_by_creator
+on public.teams
+for insert
+with check (created_by = auth.uid());
+
+-- オンボーディング時（プロフィール未作成）にチーム作成者が自分のチームを参照できる
+-- roles/categories の INSERT ポリシー内サブクエリでも必要
+create policy teams_select_as_creator
+on public.teams
+for select
+using (created_by = auth.uid());
+
+create policy teams_select_same_team
 on public.teams
 for select
 using (id = public.current_team_id());
 
-create policy if not exists teams_update_same_team_admin
+create policy teams_update_same_team_admin
 on public.teams
 for update
 using (
@@ -239,12 +251,17 @@ using (
 );
 
 -- profiles: 同一チームのみ閲覧・編集
-create policy if not exists profiles_select_same_team
+create policy profiles_insert_self
+on public.profiles
+for insert
+with check (id = auth.uid());
+
+create policy profiles_select_same_team
 on public.profiles
 for select
 using (team_id = public.current_team_id());
 
-create policy if not exists profiles_update_self_or_admin
+create policy profiles_update_self_or_admin
 on public.profiles
 for update
 using (
@@ -257,44 +274,70 @@ using (
 );
 
 -- roles: 同一チームのみ
-create policy if not exists roles_all_same_team
+-- ※ オンボーディング時はプロフィール未作成のため current_team_id() = NULL になる。
+--   チーム作成者からの INSERT も許可する。
+create policy roles_all_same_team
 on public.roles
 for all
 using (team_id = public.current_team_id())
 with check (team_id = public.current_team_id());
 
+create policy roles_insert_by_team_creator
+on public.roles
+for insert
+with check (
+  exists (
+    select 1 from public.teams t
+    where t.id = team_id
+      and t.created_by = auth.uid()
+  )
+);
+
 -- 共通: team_id = current_team_id() のみ許可
-create policy if not exists athletes_all_same_team
+create policy athletes_all_same_team
 on public.athletes
 for all
 using (team_id = public.current_team_id())
 with check (team_id = public.current_team_id());
 
-create policy if not exists phases_all_same_team
+create policy phases_all_same_team
 on public.phases
 for all
 using (team_id = public.current_team_id())
 with check (team_id = public.current_team_id());
 
-create policy if not exists categories_all_same_team
+-- ※ オンボーディング時はプロフィール未作成のため current_team_id() = NULL になる。
+--   チーム作成者からの INSERT も許可する。
+create policy categories_all_same_team
 on public.categories
 for all
 using (team_id = public.current_team_id())
 with check (team_id = public.current_team_id());
 
-create policy if not exists subjects_all_same_team
+create policy categories_insert_by_team_creator
+on public.categories
+for insert
+with check (
+  exists (
+    select 1 from public.teams t
+    where t.id = team_id
+      and t.created_by = auth.uid()
+  )
+);
+
+create policy subjects_all_same_team
 on public.subjects
 for all
 using (team_id = public.current_team_id())
 with check (team_id = public.current_team_id());
 
-create policy if not exists practice_logs_all_same_team
+create policy practice_logs_all_same_team
 on public.practice_logs
 for all
 using (team_id = public.current_team_id())
 with check (team_id = public.current_team_id());
 
-create policy if not exists practice_log_subjects_all_same_team
+create policy practice_log_subjects_all_same_team
 on public.practice_log_subjects
 for all
 using (
@@ -312,19 +355,19 @@ with check (
   )
 );
 
-create policy if not exists log_media_all_same_team
+create policy log_media_all_same_team
 on public.log_media
 for all
 using (team_id = public.current_team_id())
 with check (team_id = public.current_team_id());
 
-create policy if not exists individual_notes_all_same_team
+create policy individual_notes_all_same_team
 on public.individual_notes
 for all
 using (team_id = public.current_team_id())
 with check (team_id = public.current_team_id());
 
-create policy if not exists reactions_all_same_team
+create policy reactions_all_same_team
 on public.reactions
 for all
 using (team_id = public.current_team_id())

@@ -1,3 +1,5 @@
+import BottomNav from "@/components/layout/bottom-nav";
+
 export default function AuthenticatedLayout({
   children,
 }: {
@@ -5,18 +7,16 @@ export default function AuthenticatedLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <header className="flex items-center justify-between border-b bg-white px-4 py-3">
+      <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-white px-4 py-3">
         <div>
-          <p className="text-xs font-medium text-gray-500">Coaching Hub</p>
-          <p className="text-sm font-semibold text-gray-900">
-            今日の練習ログ
-          </p>
+          <p className="text-[10px] font-medium text-gray-400">Coaching Hub</p>
+          <p className="text-sm font-bold text-gray-900">コーチングハブ</p>
         </div>
       </header>
-      <main className="flex-1 px-3 pb-20 pt-3 md:px-6 md:pb-6">
+      <main className="flex-1 px-3 pb-24 pt-3 md:px-6 md:pb-8">
         {children}
       </main>
+      <BottomNav />
     </div>
   );
 }
-
